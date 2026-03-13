@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ifinu/radio-api/internal/models"
 	"github.com/ifinu/radio-api/internal/services"
 	"github.com/ifinu/radio-api/internal/stream"
 	"github.com/rs/zerolog/log"
@@ -43,15 +44,23 @@ func (h *RadioHandler) ListRadios(c *gin.Context) {
 	radios, total, err := h.service.List(c.Request.Context(), limit, offset)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to list radios")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch radios"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"sucesso": false,
+			"mensagem": "Failed to fetch radios",
+		})
 		return
 	}
 
+	// Convert to DTOs
+	dtos := make([]interface{}, len(radios))
+	for i, radio := range radios {
+		dtos[i] = radio.ToDTO()
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"data":   radios,
-		"total":  total,
-		"limit":  limit,
-		"offset": offset,
+		"sucesso": true,
+		"dados":   dtos,
+		"total":   total,
 	})
 }
 
@@ -103,20 +112,33 @@ func (h *RadioHandler) SearchRadios(c *gin.Context) {
 // @Success 200 {object} models.Radio
 // @Router /radios/{id} [get]
 func (h *RadioHandler) GetRadio(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	// Try to get by UUID first, fallback to numeric ID
+	idParam := c.Param("id")
+
+	// Check if it's a UUID or numeric ID
+	var radio *models.Radio
+	var err error
+
+	if id, parseErr := strconv.ParseUint(idParam, 10, 32); parseErr == nil {
+		radio, err = h.service.GetByID(c.Request.Context(), uint(id))
+	} else {
+		// Try UUID
+		radio, err = h.service.GetByUUID(c.Request.Context(), idParam)
+	}
+
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid radio ID"})
+		log.Error().Err(err).Str("id", idParam).Msg("Failed to get radio")
+		c.JSON(http.StatusNotFound, gin.H{
+			"sucesso": false,
+			"mensagem": "Radio not found",
+		})
 		return
 	}
 
-	radio, err := h.service.GetByID(c.Request.Context(), uint(id))
-	if err != nil {
-		log.Error().Err(err).Uint64("id", id).Msg("Failed to get radio")
-		c.JSON(http.StatusNotFound, gin.H{"error": "Radio not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, radio)
+	c.JSON(http.StatusOK, gin.H{
+		"sucesso": true,
+		"dados": radio.ToDTO(),
+	})
 }
 
 // StreamRadio godoc

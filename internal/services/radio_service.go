@@ -20,6 +20,7 @@ const (
 
 type RadioService interface {
 	GetByID(ctx context.Context, id uint) (*models.Radio, error)
+	GetByUUID(ctx context.Context, uuid string) (*models.Radio, error)
 	List(ctx context.Context, limit, offset int) ([]*models.Radio, int64, error)
 	Search(ctx context.Context, query string, limit, offset int) ([]*models.Radio, error)
 	SyncRadios(ctx context.Context) error
@@ -59,6 +60,19 @@ func (s *radioService) GetByID(ctx context.Context, id uint) (*models.Radio, err
 
 	// Store in cache
 	s.cache.Set(id, radio)
+
+	return radio, nil
+}
+
+func (s *radioService) GetByUUID(ctx context.Context, uuid string) (*models.Radio, error) {
+	// Get from database
+	radio, err := s.repo.FindByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache
+	s.cache.Set(radio.ID, radio)
 
 	return radio, nil
 }
@@ -106,6 +120,8 @@ func (s *radioService) SyncRadios(ctx context.Context) error {
 			Bitrate:   station.Bitrate,
 			Favicon:   station.Favicon,
 			Homepage:  station.Homepage,
+			Active:    true,
+			Listeners: 0,
 		}
 
 		// Fallback to URL if URLResolved is empty
