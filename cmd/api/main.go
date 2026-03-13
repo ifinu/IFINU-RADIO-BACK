@@ -132,6 +132,13 @@ func setupRouter(radioHandler *handlers.RadioHandler) *gin.Engine {
 			radios.GET("/:id", radioHandler.GetRadio)
 			radios.GET("/:id/stream", radioHandler.StreamRadio)
 		}
+
+		// Admin routes (protected)
+		admin := v1.Group("/admin")
+		admin.Use(adminAuthMiddleware())
+		{
+			admin.POST("/sync", radioHandler.SyncRadios)
+		}
 	}
 
 	return router
@@ -139,12 +146,63 @@ func setupRouter(radioHandler *handlers.RadioHandler) *gin.Engine {
 
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		// Allow specific origins in production
+		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+		if allowedOrigins == "" {
+			allowedOrigins = "*" // Fallback for development
+		}
+
+		c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigins)
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-API-Key")
+		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// Admin authentication middleware
+func adminAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		apiKey := os.Getenv("ADMIN_API_KEY")
+
+		// If no API key is set, deny all admin requests
+		if apiKey == "" {
+			log.Warn().Msg("Admin endpoint accessed but ADMIN_API_KEY not configured")
+			c.JSON(401, gin.H{
+				"sucesso": false,
+				"mensagem": "Admin API key not configured",
+			})
+			c.Abort()
+			return
+		}
+
+		// Check X-API-Key header
+		providedKey := c.GetHeader("X-API-Key")
+		if providedKey == "" {
+			c.JSON(401, gin.H{
+				"sucesso": false,
+				"mensagem": "Missing API key",
+			})
+			c.Abort()
+			return
+		}
+
+		// Constant-time comparison to prevent timing attacks
+		if providedKey != apiKey {
+			log.Warn().
+				Str("ip", c.ClientIP()).
+				Msg("Failed admin authentication attempt")
+			c.JSON(403, gin.H{
+				"sucesso": false,
+				"mensagem": "Invalid API key",
+			})
+			c.Abort()
 			return
 		}
 

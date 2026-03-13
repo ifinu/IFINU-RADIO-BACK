@@ -79,6 +79,16 @@ go run cmd/api/main.go
 GET /health
 ```
 
+Response:
+```json
+{
+  "status": "ok",
+  "database": "ok",
+  "total_radios": 1500,
+  "version": "1.0.0"
+}
+```
+
 ### List Radios
 ```
 GET /api/v1/radios?limit=20&offset=0
@@ -87,10 +97,9 @@ GET /api/v1/radios?limit=20&offset=0
 Response:
 ```json
 {
-  "data": [...],
-  "total": 1500,
-  "limit": 20,
-  "offset": 0
+  "sucesso": true,
+  "dados": [...],
+  "total": 1500
 }
 ```
 
@@ -114,6 +123,23 @@ This endpoint proxies the radio stream with:
 - Retry on connection loss (3 attempts)
 - Exponential backoff
 - Client disconnect detection
+
+### Admin: Force Sync (Protected)
+```
+POST /api/v1/admin/sync
+Header: X-API-Key: your_api_key_here
+```
+
+**⚠️ Requires authentication** - Set `ADMIN_API_KEY` environment variable.
+
+Response:
+```json
+{
+  "sucesso": true,
+  "mensagem": "Sync completed successfully",
+  "total_radios": 1500
+}
+```
 
 ## Streaming System
 
@@ -150,6 +176,7 @@ All configuration via environment variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | PORT | 8080 | Server port |
+| ENV | development | Environment (development/production) |
 | DB_HOST | localhost | PostgreSQL host |
 | DB_PORT | 5432 | PostgreSQL port |
 | DB_USER | postgres | Database user |
@@ -158,6 +185,10 @@ All configuration via environment variables:
 | STREAM_BUFFER_SIZE | 65536 | Stream buffer (bytes) |
 | STREAM_RETRY_ATTEMPTS | 3 | Max retry attempts |
 | SYNC_INTERVAL | 6h | Sync frequency |
+| **ADMIN_API_KEY** | - | **API key for admin routes (required)** |
+| **ALLOWED_ORIGINS** | * | **CORS allowed origins (comma-separated)** |
+
+⚠️ **Security**: See [SECURITY.md](SECURITY.md) for security best practices.
 
 ## Database Schema
 

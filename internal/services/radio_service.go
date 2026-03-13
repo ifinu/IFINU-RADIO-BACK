@@ -23,6 +23,7 @@ type RadioService interface {
 	GetByUUID(ctx context.Context, uuid string) (*models.Radio, error)
 	List(ctx context.Context, limit, offset int) ([]*models.Radio, int64, error)
 	Search(ctx context.Context, query string, limit, offset int) ([]*models.Radio, error)
+	Count(ctx context.Context) (int64, error)
 	SyncRadios(ctx context.Context) error
 	StartPeriodicSync(interval time.Duration)
 }
@@ -93,6 +94,10 @@ func (s *radioService) List(ctx context.Context, limit, offset int) ([]*models.R
 
 func (s *radioService) Search(ctx context.Context, query string, limit, offset int) ([]*models.Radio, error) {
 	return s.repo.Search(ctx, query, limit, offset)
+}
+
+func (s *radioService) Count(ctx context.Context) (int64, error) {
+	return s.repo.Count(ctx)
 }
 
 func (s *radioService) SyncRadios(ctx context.Context) error {

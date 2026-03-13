@@ -34,6 +34,8 @@ services:
       STREAM_BUFFER_SIZE: 65536
       STREAM_RETRY_ATTEMPTS: 3
       SYNC_INTERVAL: 6h
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-change-this-in-production}
+      ALLOWED_ORIGINS: https://ifinu.io,https://www.ifinu.io
     depends_on:
       postgres:
         condition: service_healthy

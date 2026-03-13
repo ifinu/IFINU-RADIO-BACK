@@ -187,14 +187,58 @@ func (h *RadioHandler) StreamRadio(c *gin.Context) {
 
 // Health godoc
 // @Summary Health check
-// @Description Health check endpoint
+// @Description Health check endpoint with system status
 // @Tags health
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]string
+// @Success 200 {object} map[string]interface{}
 // @Router /health [get]
 func (h *RadioHandler) Health(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// Check database
+	count, err := h.service.Count(ctx)
+	dbStatus := "ok"
+	if err != nil {
+		dbStatus = "error"
+		log.Error().Err(err).Msg("Database health check failed")
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"status": "ok",
+		"status":      "ok",
+		"database":    dbStatus,
+		"total_radios": count,
+		"version":     "1.0.0",
+	})
+}
+
+// SyncRadios godoc
+// @Summary Force radio synchronization
+// @Description Manually trigger synchronization with Radio Browser API
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/admin/sync [post]
+func (h *RadioHandler) SyncRadios(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	log.Info().Msg("Manual sync triggered")
+
+	if err := h.service.SyncRadios(ctx); err != nil {
+		log.Error().Err(err).Msg("Manual sync failed")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"sucesso": false,
+			"mensagem": "Sync failed: " + err.Error(),
+		})
+		return
+	}
+
+	count, _ := h.service.Count(ctx)
+
+	c.JSON(http.StatusOK, gin.H{
+		"sucesso": true,
+		"mensagem": "Sync completed successfully",
+		"total_radios": count,
 	})
 }
