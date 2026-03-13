@@ -1,0 +1,15 @@
+[Unit]
+Description=IFINU Radio Backend Webhook Deploy Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/ifinu-radio/ifinu-radio-back
+Environment="WEBHOOK_SECRET=CHANGE_THIS_SECRET"
+ExecStart=/var/www/ifinu-radio/ifinu-radio-back/webhook-server
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
