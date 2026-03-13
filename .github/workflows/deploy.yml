@@ -20,27 +20,47 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: 22
           script: |
+            # Navigate to project directory
+            mkdir -p /var/www/ifinu-radio
             cd /var/www/ifinu-radio
 
             # Clone or pull repository
             if [ -d "ifinu-radio-back" ]; then
+              echo "📥 Updating repository..."
               cd ifinu-radio-back
+              git reset --hard origin/main
               git pull origin main
             else
+              echo "📥 Cloning repository..."
               git clone https://github.com/${{ github.repository }} ifinu-radio-back
               cd ifinu-radio-back
             fi
 
-            # Copy env file if not exists
+            # Configure .env if not exists
             if [ ! -f .env ]; then
+              echo "⚙️  Configuring .env..."
               cp .env.example .env
-              echo "⚠️  Please configure .env file with your settings"
+              # Generate secure API key
+              API_KEY=$(openssl rand -base64 32)
+              sed -i "s/your-secret-api-key-here-change-in-production/$API_KEY/" .env
+              echo "✅ .env configured with secure API key"
             fi
 
             # Stop and rebuild containers
-            docker compose stop api postgres || true
-            docker compose build --no-cache api
-            docker compose up -d api postgres
+            echo "🐳 Stopping containers..."
+            docker compose down || true
+
+            echo "🔨 Building containers (no cache)..."
+            docker compose build --no-cache
+
+            echo "▶️  Starting containers..."
+            docker compose up -d
+
+            # Wait for services to start
+            sleep 5
 
             # Show logs
+            echo "📋 Backend logs:"
             docker compose logs --tail=50 api
+
+            echo "✅ Deploy completed successfully!"
