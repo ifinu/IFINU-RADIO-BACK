@@ -1,0 +1,46 @@
+name: Deploy Backend to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            cd /var/www/ifinu-radio
+
+            # Clone or pull repository
+            if [ -d "ifinu-radio-back" ]; then
+              cd ifinu-radio-back
+              git pull origin main
+            else
+              git clone https://github.com/${{ github.repository }} ifinu-radio-back
+              cd ifinu-radio-back
+            fi
+
+            # Copy env file if not exists
+            if [ ! -f .env ]; then
+              cp .env.example .env
+              echo "⚠️  Please configure .env file with your settings"
+            fi
+
+            # Stop and rebuild containers
+            docker compose stop api postgres || true
+            docker compose build --no-cache api
+            docker compose up -d api postgres
+
+            # Show logs
+            docker compose logs --tail=50 api
