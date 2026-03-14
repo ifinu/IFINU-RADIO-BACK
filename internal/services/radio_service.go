@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	RadioBrowserAPIBase = "https://api.radio-browser.info/json/stations"
+	RadioBrowserAPIBase = "https://de1.api.radio-browser.info/json/stations"
 )
 
 type RadioService interface {
@@ -153,7 +153,7 @@ func (s *radioService) SyncRadios(ctx context.Context) error {
 
 func (s *radioService) fetchStations(ctx context.Context) ([]*models.RadioBrowserStation, error) {
 	// Fetch Brazilian stations as default
-	url := fmt.Sprintf("%s/bycountry/brazil", RadioBrowserAPIBase)
+	url := fmt.Sprintf("%s/bycountrycodeexact/BR", RadioBrowserAPIBase)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
