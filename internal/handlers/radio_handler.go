@@ -158,19 +158,28 @@ func (h *RadioHandler) GetRadio(c *gin.Context) {
 // @Tags radios
 // @Accept json
 // @Produce audio/mpeg
-// @Param id path int true "Radio ID"
+// @Param id path string true "Radio ID or UUID"
 // @Router /radios/{id}/stream [get]
 func (h *RadioHandler) StreamRadio(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid radio ID"})
-		return
+	// Try to get by UUID first, fallback to numeric ID
+	idParam := c.Param("id")
+
+	var radio *models.Radio
+	var err error
+
+	if id, parseErr := strconv.ParseUint(idParam, 10, 32); parseErr == nil {
+		radio, err = h.service.GetByID(c.Request.Context(), uint(id))
+	} else {
+		// Try UUID
+		radio, err = h.service.GetByUUID(c.Request.Context(), idParam)
 	}
 
-	radio, err := h.service.GetByID(c.Request.Context(), uint(id))
 	if err != nil {
-		log.Error().Err(err).Uint64("id", id).Msg("Failed to get radio for streaming")
-		c.JSON(http.StatusNotFound, gin.H{"error": "Radio not found"})
+		log.Error().Err(err).Str("id", idParam).Msg("Failed to get radio for streaming")
+		c.JSON(http.StatusNotFound, gin.H{
+			"sucesso": false,
+			"mensagem": "Radio not found",
+		})
 		return
 	}
 
