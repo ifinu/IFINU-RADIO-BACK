@@ -92,13 +92,24 @@ func (h *RadioHandler) SearchRadios(c *gin.Context) {
 	radios, err := h.service.Search(c.Request.Context(), query, limit, offset)
 	if err != nil {
 		log.Error().Err(err).Str("query", query).Msg("Failed to search radios")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search radios"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"sucesso": false,
+			"mensagem": "Failed to search radios",
+		})
 		return
 	}
 
+	// Convert to DTOs
+	dtos := make([]interface{}, len(radios))
+	for i, radio := range radios {
+		dtos[i] = radio.ToDTO()
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"data":  radios,
-		"query": query,
+		"sucesso": true,
+		"dados":   dtos,
+		"total":   len(radios),
+		"busca":   query,
 	})
 }
 
